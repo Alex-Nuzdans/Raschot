@@ -1,0 +1,79 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from scipy import stats
+from scipy.optimize import minimize
+# This is a sample Python script.
+
+# Press Shift+F10 to execute it or replace it with your code.
+# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+
+def gist(data):
+    plt.figure(figsize=(8, 6))
+    plt.hist(data, bins=30, edgecolor='black', alpha=0.7)
+    plt.title('Гистограмма', fontsize=14)
+    plt.xlabel('Значения', fontsize=12)
+    plt.ylabel('Частота', fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.savefig("gistogramm.png", dpi=300)
+
+def seryas(data,median,alpha):
+    signs = np.where(data >= median, '+', '-')
+    n_plus = np.sum(signs == '+')
+    n_minus = np.sum(signs == '-')
+    runs = 1
+    for i in range(1, len(signs)):
+        if signs[i] != signs[i - 1]:
+            runs += 1
+    temp1=2*n_plus*n_minus
+    temp2=n_plus+n_minus
+    z1=((runs-(temp1/temp2)-1)-0.5)/np.sqrt((temp1*(temp1-temp2))/(((temp2)**2)*(temp2+1)))
+    z2 = stats.norm.ppf(1 - alpha/2)
+    if abs(z1) < z2:
+        return True
+    return False
+
+def hy2(data,mean,num_bins=None):
+    n = len(data)
+    sample_var_biased = np.std(data, ddof=1)
+    if num_bins is None:
+        num_bins = int(1 + 3.322 * np.log10(n))
+        num_bins = max(5, min(num_bins, 15))
+
+
+
+
+def MMP(data,mean):
+    sample_var_biased=data.var(ddof=0)[1]
+    mu_mle = mean
+    sigma_mle = np.sqrt(sample_var_biased)
+    log_likelihood = np.sum(stats.norm.logpdf(data, loc=mu_mle, scale=sigma_mle))
+    fitted_mu, fitted_sigma = stats.norm.fit(data)
+    print(f"\nЛогарифмическая функция правдоподобия для оценок ММП: {log_likelihood:.4f}")
+    print(f"  μ: {fitted_mu:.4f} (должно совпадать с выборочным средним)")
+    print(f"  σ: {fitted_sigma:.4f} (должно совпадать с sqrt(смещенной дисперсии) = {sigma_mle:.4f})")
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    df=pd.read_csv("data.csv", sep=';', header=None,usecols=[1])
+    df[1] = df[1].str.replace(',', '.')
+    df[1] = pd.to_numeric(df[1], errors='coerce')
+    mean=df.mean()[1]
+    print("Среднее значение: ",mean)
+    var=df.var()[1]
+    print("Дисперсия: ",var)
+    median=df.median()[1]
+    print("Медиана: ",median)
+    skew=df.skew()[1]
+    print("Коэффицент ассиметрии: ",skew)#Больше 0 значит много мелких значений и несколько очень больших
+    kurtosis=df.kurt()[1]
+    print("Эксцесс: ",kurtosis)
+    gist(df)#Распределение нормальное
+    if seryas(df,median,alpha=0.05):
+        print("Выборка случайна!")
+    else:
+        print("Выборка не случчайна!")
+    MMP(df,mean)
+# See PyCharm help at https://www.jetbrains.com/help/pycharm/
