@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 from scipy import stats
-from scipy.optimize import minimize
 # This is a sample Python script.
 
 # Press Shift+F10 to execute it or replace it with your code.
@@ -35,15 +34,50 @@ def seryas(data,median,alpha):
         return True
     return False
 
-def hy2(data,mean,num_bins=None):
+def hy2(data,alpha,mean):
+    data = np.array(data)
     n = len(data)
-    sample_var_biased = np.std(data, ddof=1)
-    if num_bins is None:
-        num_bins = int(1 + 3.322 * np.log10(n))
-        num_bins = max(5, min(num_bins, 15))
+    bins = int(1 + 3.322 * np.log10(n))
+    bins = max(5, min(bins, 20))
+    observed, bin_edges = np.histogram(data, bins=bins)
+    std_est = np.std(data, ddof=0)
+    probabilities = np.zeros(bins)
+    for i in range(bins):
+        prob = (stats.norm.cdf(bin_edges[i+1], loc=mean, scale=std_est) -
+                stats.norm.cdf(bin_edges[i], loc=mean, scale=std_est))
+        probabilities[i] = prob
+    expected = probabilities * n
+    i = 0
+    while i < len(expected):
+        if expected[i] < 5:
+            if i == 0:  # объединяем с правым соседом
+                expected[i + 1] += expected[i]
+                observed[i + 1] += observed[i]
+                expected = np.delete(expected, i)
+                observed = np.delete(observed, i)
+                bin_edges = np.delete(bin_edges, i + 1)
+            elif i == len(expected) - 1:  # объединяем с левым соседом
+                expected[i - 1] += expected[i]
+                observed[i - 1] += observed[i]
+                expected = np.delete(expected, i)
+                observed = np.delete(observed, i)
+                bin_edges = np.delete(bin_edges, i + 1)
+            else:  # объединяем с правым соседом
+                expected[i + 1] += expected[i]
+                observed[i + 1] += observed[i]
+                expected = np.delete(expected, i)
+                observed = np.delete(observed, i)
+                bin_edges = np.delete(bin_edges, i + 1)
+        else:
+            i += 1
 
-
-
+    k = len(expected)
+    chi2_stat = np.sum((observed - expected)**2 / expected)
+    dof = k - 2 - 1
+    critical_value = stats.chi2.ppf(1 - alpha, dof)
+    if chi2_stat < critical_value:
+        return True
+    return False
 
 def MMP(data,mean):
     sample_var_biased=data.var(ddof=0)[1]
@@ -76,4 +110,8 @@ if __name__ == '__main__':
     else:
         print("Выборка не случчайна!")
     MMP(df,mean)
+    if hy2(df,alpha=0.1,mean=mean):
+        print("Вид распределения соответствует!")
+    else:
+        print("Вид распределения не соответствует!")
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
