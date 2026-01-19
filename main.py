@@ -10,8 +10,26 @@ from scipy import stats
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 def gist(data):
+    if hasattr(data, 'values'):
+        data = data.values.flatten()
+    elif hasattr(data, 'to_numpy'):
+        data = data.to_numpy().flatten()
+    else:
+        data = np.array(data).flatten()
+    mean = np.mean(data)
+    sigma_est = np.std(data)
     plt.figure(figsize=(8, 6))
-    plt.hist(data, bins=30, edgecolor='black', alpha=0.7)
+    n, bins, patches = plt.hist(data, bins=30, density=True,
+                                edgecolor='black', alpha=0.7,
+                                color='lightblue', label='Гистограмма')
+    data_min, data_max = data.min(), data.max()
+    data_range = data_max - data_min
+    x_min = data_min - 0.1 * data_range
+    x_max = data_max + 0.1 * data_range
+    x = np.linspace(x_min, x_max, 1000)
+    p = stats.norm.pdf(x, mean, sigma_est)
+    plt.plot(x, p, 'r-', linewidth=3,
+             label=f'Нормальное распределение\nμ={mean:.2f}, σ={sigma_est:.2f}')
     plt.title('Гистограмма', fontsize=14)
     plt.xlabel('Значения', fontsize=12)
     plt.ylabel('Частота', fontsize=12)
