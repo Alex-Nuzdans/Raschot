@@ -80,47 +80,58 @@ def seryas(data,median,alpha):
         return True
     return False
 
-def hy2(data,alpha,mean):
+def hy2(data,alpha):
     data = np.array(data)
     n = len(data)
+    mean = np.mean(data)
+    std_est = np.std(data, ddof=1)
+    print(f"Оценки параметров: mean = {mean:.4f}, std = {std_est:.4f}")
     bins = int(1 + 3.322 * np.log10(n))
     bins = max(5, min(bins, 20))
+    print(f"Количество интервалов: {bins}")
     observed, bin_edges = np.histogram(data, bins=bins)
-    std_est = np.std(data, ddof=0)
     probabilities = np.zeros(bins)
     for i in range(bins):
         prob = (stats.norm.cdf(bin_edges[i+1], loc=mean, scale=std_est) -
                 stats.norm.cdf(bin_edges[i], loc=mean, scale=std_est))
         probabilities[i] = prob
     expected = probabilities * n
+    merged_observed = []
+    merged_expected = []
     i = 0
     while i < len(expected):
         if expected[i] < 5:
-            if i == 0:  # объединяем с правым соседом
-                expected[i + 1] += expected[i]
-                observed[i + 1] += observed[i]
-                expected = np.delete(expected, i)
-                observed = np.delete(observed, i)
-                bin_edges = np.delete(bin_edges, i + 1)
-            elif i == len(expected) - 1:  # объединяем с левым соседом
-                expected[i - 1] += expected[i]
-                observed[i - 1] += observed[i]
-                expected = np.delete(expected, i)
-                observed = np.delete(observed, i)
-                bin_edges = np.delete(bin_edges, i + 1)
-            else:  # объединяем с правым соседом
-                expected[i + 1] += expected[i]
-                observed[i + 1] += observed[i]
-                expected = np.delete(expected, i)
-                observed = np.delete(observed, i)
-                bin_edges = np.delete(bin_edges, i + 1)
+            if i < len(expected) - 1:
+                merged_obs = observed[i] + observed[i + 1]
+                merged_exp = expected[i] + expected[i + 1]
+                merged_observed.append(merged_obs)
+                merged_expected.append(merged_exp)
+                i += 2
+            else:
+                if len(merged_observed) > 0:
+                    merged_observed[-1] += observed[i]
+                    merged_expected[-1] += expected[i]
+                i += 1
         else:
+            merged_observed.append(observed[i])
+            merged_expected.append(expected[i])
             i += 1
+    merged_observed = np.array(merged_observed)
+    merged_expected = np.array(merged_expected)
+    while np.any(merged_expected < 5) and len(merged_expected) > 1:
+        min_idx = np.argmin(merged_expected)
+        if min_idx == 0:
+            merged_expected[1] += merged_expected[0]
+            merged_observed[1] += merged_observed[0]
+        else:
+            merged_expected[min_idx - 1] += merged_expected[min_idx]
+            merged_observed[min_idx - 1] += merged_observed[min_idx]
+        merged_expected = np.delete(merged_expected, min_idx)
+        merged_observed = np.delete(merged_observed, min_idx)
 
-    k = len(expected)
-    chi2_stat = np.sum((observed - expected)**2 / expected)
+    chi2_stat = np.sum((merged_observed - merged_expected)**2 / merged_expected)
     print("X^2 вычисленное = ", chi2_stat)
-    dof = k - 2 - 1
+    dof = len(merged_expected) - 2 - 1
     critical_value = stats.chi2.ppf(1 - alpha, dof)
     print("X^2 Критическое = ", critical_value)
     if chi2_stat < critical_value:
@@ -161,7 +172,7 @@ if __name__ == '__main__':
     print("ММП:")
     MMP(df,mean)
     print("Хи квадрат пирсона:")
-    if hy2(df,alpha=0.1,mean=mean):
+    if hy2(df,alpha=0.1):
         print("Вид распределения соответствует!")
     else:
         print("Вид распределения не соответствует!")
