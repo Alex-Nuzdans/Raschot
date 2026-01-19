@@ -10,13 +10,24 @@ from scipy import stats
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 def mannwhitney(data,median,alpha=0.01):
-    sample1 = data[data <= median]
-    sample2 = data[data > median]
+    if hasattr(data, 'values'):
+        data = data.values.flatten()
+    elif hasattr(data, 'to_numpy'):
+        data = data.to_numpy().flatten()
+    else:
+        data = np.array(data).flatten()
+    n = len(data)
+    n1 = n // 2
+    n2 = n - n1
+    sample1 = data[:n1]
+    sample2 = data[n1:]
     stat,_ = stats.mannwhitneyu(sample1, sample2, alternative='two-sided')
-    mu_U =len(sample1) * len(sample2) / 2
-    sigma_U = np.sqrt(len(sample1) * len(sample2) * (len(sample1) + len(sample2) + 1) / 12)
+    mu_U = n1 * n2 / 2
+    sigma_U = np.sqrt(n1 * n2 * (n1 + n2 + 1) / 12)
     Z_stat = (stat - mu_U) / sigma_U
+    print("Z вычисленное = ",Z_stat)
     z_critical = stats.norm.ppf(1 - alpha / 2)
+    print("Z критическое = ", z_critical)
     if abs(Z_stat) < z_critical:
         return True
     return False
@@ -31,7 +42,7 @@ def gist(data):
     mean = np.mean(data)
     sigma_est = np.std(data)
     plt.figure(figsize=(8, 6))
-    n, bins, patches = plt.hist(data, bins=30, density=True,
+    plt.hist(data, bins=30, density=True,
                                 edgecolor='black', alpha=0.7,
                                 color='lightblue', label='Гистограмма')
     data_min, data_max = data.min(), data.max()
@@ -56,10 +67,15 @@ def seryas(data,median,alpha):
     for i in range(1, len(signs)):
         if signs[i] != signs[i - 1]:
             runs += 1
+    print("Количество плюсов: ",n_plus,
+          "\nКоличество минусов: ",n_minus,
+          "\nКоличество серий: ",runs)
     temp1=2*n_plus*n_minus
     temp2=n_plus+n_minus
     z1=((runs-(temp1/temp2)-1)-0.5)/np.sqrt((temp1*(temp1-temp2))/(((temp2)**2)*(temp2+1)))
+    print("Z вычисленное = ", z1)
     z2 = stats.norm.ppf(1 - alpha/2)
+    print("Z критическое = ", z2)
     if abs(z1) < z2:
         return True
     return False
@@ -103,8 +119,10 @@ def hy2(data,alpha,mean):
 
     k = len(expected)
     chi2_stat = np.sum((observed - expected)**2 / expected)
+    print("X^2 вычисленное = ", chi2_stat)
     dof = k - 2 - 1
     critical_value = stats.chi2.ppf(1 - alpha, dof)
+    print("X^2 Критическое = ", critical_value)
     if chi2_stat < critical_value:
         return True
     return False
@@ -135,15 +153,19 @@ if __name__ == '__main__':
     kurtosis=df.kurt()[1]
     print("Эксцесс: ",kurtosis)
     gist(df)#Распределение нормальное
+    print("Критерий серий:")
     if seryas(df,median,alpha=0.05):
         print("Выборка случайна!")
     else:
         print("Выборка не случчайна!")
+    print("ММП:")
     MMP(df,mean)
+    print("Хи квадрат пирсона:")
     if hy2(df,alpha=0.1,mean=mean):
         print("Вид распределения соответствует!")
     else:
         print("Вид распределения не соответствует!")
+    print("Критерий Манна-Уитни:")
     if mannwhitney(df,median,alpha=0.01):
         print("Выборка однородна!")
     else:
