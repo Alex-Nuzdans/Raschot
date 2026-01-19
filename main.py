@@ -9,6 +9,18 @@ from scipy import stats
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
+def mannwhitney(data,median,alpha=0.01):
+    sample1 = data[data <= median]
+    sample2 = data[data > median]
+    stat,_ = stats.mannwhitneyu(sample1, sample2, alternative='two-sided')
+    mu_U =len(sample1) * len(sample2) / 2
+    sigma_U = np.sqrt(len(sample1) * len(sample2) * (len(sample1) + len(sample2) + 1) / 12)
+    Z_stat = (stat - mu_U) / sigma_U
+    z_critical = stats.norm.ppf(1 - alpha / 2)
+    if abs(Z_stat) < z_critical:
+        return True
+    return False
+
 def gist(data):
     if hasattr(data, 'values'):
         data = data.values.flatten()
@@ -132,4 +144,8 @@ if __name__ == '__main__':
         print("Вид распределения соответствует!")
     else:
         print("Вид распределения не соответствует!")
+    if mannwhitney(df,median,alpha=0.01):
+        print("Выборка однородна!")
+    else:
+        print("Выборка не однородна!")
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
