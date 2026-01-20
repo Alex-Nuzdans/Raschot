@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -41,10 +43,22 @@ def gist(data):
         data = np.array(data).flatten()
     mean = np.mean(data)
     sigma_est = np.std(data)
+    k = int(1 + math.log2(len(data)))
+
+    data_min = data.min()
+    data_max = data.max()
+    bins_fixed = np.linspace(data_min, data_max, k + 1)
     plt.figure(figsize=(8, 6))
-    plt.hist(data, bins=30, density=True,
+    counts, bins, patches=plt.hist(data, bins=bins_fixed, density=True,
                                 edgecolor='black', alpha=0.7,
                                 color='lightblue', label='Гистограмма')
+    for i in range(len(bins) - 1):
+        x_center = bins[i] + (bins[i + 1] - bins[i]) / 2
+        interval_label = f'[{bins[i]:.2f},\n{bins[i + 1]:.2f})'
+
+        plt.text(x_center, -max(counts) * 0.08, interval_label,
+                 ha='center', va='top', fontsize=9,
+                 bbox=dict(boxstyle="round,pad=0.3", facecolor="wheat", alpha=0.7))
     data_min, data_max = data.min(), data.max()
     data_range = data_max - data_min
     x_min = data_min - 0.1 * data_range
@@ -54,7 +68,6 @@ def gist(data):
     plt.plot(x, p, 'r-', linewidth=3,
              label=f'Нормальное распределение\nμ={mean:.2f}, σ={sigma_est:.2f}')
     plt.title('Гистограмма', fontsize=14)
-    plt.xlabel('Значения', fontsize=12)
     plt.ylabel('Частота', fontsize=12)
     plt.grid(True, alpha=0.3)
     plt.savefig("gistogramm.png", dpi=300)
